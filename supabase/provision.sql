@@ -1,0 +1,14 @@
+-- Example only: replace the three Auth user UUIDs before running.
+-- Create the users first in Supabase Authentication. Use synthetic identities.
+-- Each user belongs to one sandbox workspace in this prototype.
+-- Do not run this file unchanged.
+--
+-- with tenant as (
+--   insert into public.rr_tenants(name) values('Cedar Health Sandbox') returning id
+-- )
+-- insert into public.rr_memberships(user_id,tenant_id,role,display_name)
+-- select user_id::uuid,tenant.id,role,display_name from tenant cross join (values
+--   ('STAFF_AUTH_USER_UUID','staff','Jordan Ellis'),
+--   ('CLINICIAN_AUTH_USER_UUID','clinician','Dr. Alex Morgan'),
+--   ('PHARMACY_AUTH_USER_UUID','pharmacy','Sam Lee')
+-- ) as users(user_id,role,display_name);
