@@ -23,6 +23,8 @@ npm run preview
 
 The local development server also runs `/api/copilot` and `/api/workspace`. `npm run preview` previews only the built frontend; use `npm run dev` or a complete Vercel deployment to test Gemini.
 
+`npm run build` also compiles and invokes both API handlers using native Node ESM. Run `npm run check:server` separately to catch server imports that work in Vite but would fail on Vercel. Server-side relative imports use explicit `.js` extensions, including imports written in TypeScript.
+
 ## Update an existing RelayRx repository
 
 Replace the matching source files from this ZIP in your existing repository, including `api/`, the new `server/` folder, configuration, and lockfile. Preserve your own `.env.local`, Git history, and project settings. No database schema replacement is needed for this update: `waitingSince` is stored in the existing case JSON payload.

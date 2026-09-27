@@ -1,9 +1,9 @@
 import { defineConfig, loadEnv } from 'vite';
 import type { Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
-import copilot from './api/copilot';
-import workspace from './api/workspace';
-import type { ApiRequest, ApiResponse } from './server/copilot';
+import copilot from './api/copilot.js';
+import workspace from './api/workspace.js';
+import type { ApiRequest, ApiResponse } from './server/copilot.js';
 // Vite-only server middleware. Secrets are never injected into the browser bundle.
 function localApi():Plugin{return {name:'relayrx-local-api',configureServer(server){server.middlewares.use(async(req,res,next)=>{
  const path=req.url?.split('?')[0];if(!['/api/copilot','/api/workspace'].includes(path||''))return next();

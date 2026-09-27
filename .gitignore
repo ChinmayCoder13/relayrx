@@ -7,3 +7,4 @@ dist/
 .sites-runtime/
 *.tsbuildinfo
 coverage/
+.server-check-*/

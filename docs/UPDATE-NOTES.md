@@ -1,4 +1,16 @@
-# RelayRx 1.1 — waiting attention and Gemini copilots
+# RelayRx update notes
+
+## 1.1.1 — Vercel runtime and sidebar fixes
+
+- Fix the `ERR_MODULE_NOT_FOUND` crash by using explicit `.js` extensions throughout both API entry points and their server dependency graph.
+- Add a native Node ESM check to the production build. It compiles and calls both handlers without Vite or a TypeScript loader, verifies controlled missing-configuration responses, and makes no provider requests.
+- Display Jordan Ellis / JE for Practice Staff, Dr. Alex Morgan / AM for Clinician, and Sam Lee / SL for Pharmacy in demo mode. Both role selectors update the same profile; connected sandbox names still come from authenticated membership.
+- Fit the sidebar to the available viewport, scroll its navigation when necessary, and reduce decorative content on shorter screens.
+- Add “Done by Chinmay Deepak Chandavar” below the sidebar profile, with a footer credit in compact layouts.
+
+Deploy the updated commit through the existing Vercel project. Keep `GEMINI_API_KEY` in Vercel's server environment; no key belongs in the repository. This import fix does not change workflow transitions, the waiting threshold, or Gemini's read-only role.
+
+## 1.1 — waiting attention and Gemini copilots
 
 This is an update to the existing six-view RelayRx application. The redstone comparator, workflow gates, role permissions, patient update previews, audit trail, failure simulation, optional Supabase mode, and growth playbook are preserved.
 

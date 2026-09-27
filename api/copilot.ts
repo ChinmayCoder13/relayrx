@@ -1,1 +1,1 @@
-export {default} from '../server/copilot';
+export {default} from '../server/copilot.js';

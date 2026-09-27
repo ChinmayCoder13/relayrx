@@ -1,5 +1,5 @@
-import { INPUTS, signal } from './engine';
-import type { Evidence, InputKey, RefillCase } from './engine';
+import { INPUTS, signal } from './engine.js';
+import type { Evidence, InputKey, RefillCase } from './engine.js';
 export const SCENARIOS = ['No refills remaining','Missing information','Visit required','Coverage issue','Clinical review'] as const;
 export function createCase(patient:string,medication:string,reason:string,index=0,now=Date.now()):RefillCase {
  const stamp=new Date(now).toISOString();

@@ -1,4 +1,5 @@
 import { newId } from './id';
+import { demoActors } from '../domain/identity';
 import { createClient } from '@supabase/supabase-js';
 import { applyAction } from '../domain/engine';
 import type { CaseAction, RefillCase, Role } from '../domain/engine';
@@ -18,7 +19,7 @@ export function loadDemo():RefillCase[]{
 export function saveDemo(cases:RefillCase[]){localStorage.setItem(KEY,JSON.stringify(cases));}
 export function demoAction(cases:RefillCase[],id:string,action:CaseAction,role:Role){
  const current=cases.find(c=>c.id===id);if(!current)throw new Error('Refill not found.');
- const changed=applyAction(current,action,role,`${role==='clinician'?'Dr. Alex Morgan':role==='pharmacy'?'Sam Lee':'Jordan Ellis'} (demo)`);
+ const changed=applyAction(current,action,role,`${demoActors[role]} (demo)`);
  const updated=cases.map(c=>c.id===id?changed:c);saveDemo(updated);return updated;
 }
 export function demoCreate(cases:RefillCase[],patient:string,medication:string,reason:string){

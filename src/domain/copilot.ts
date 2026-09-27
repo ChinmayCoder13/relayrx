@@ -1,5 +1,5 @@
-import { INPUTS, attention, nextAction, pendingStep, roleNames, signal, state, waitingExplanation, waitingSince } from './engine';
-import type { RefillCase, Role } from './engine';
+import { INPUTS, attention, nextAction, pendingStep, roleNames, signal, state, waitingExplanation, waitingSince } from './engine.js';
+import type { RefillCase, Role } from './engine.js';
 export const copilotNames:Record<Role,string>={staff:'Practice Staff AI Copilot',clinician:'Clinician AI Copilot',pharmacy:'Pharmacy AI Copilot'};
 export const rolePrompts:Record<Role,string>={
  staff:'Explain administrative blockers, why attention is needed, current owner and the next administrative action. Draft concise messages for human review. Refer clinical questions to the clinician; never propose approval on their behalf.',

@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { createHash } from 'node:crypto';
-import { applyAction, WorkflowError } from '../src/domain/engine';
-import type { CaseAction, RefillCase, Role } from '../src/domain/engine';
-import { createCase, SCENARIOS } from '../src/domain/seed';
+import { applyAction, WorkflowError } from '../src/domain/engine.js';
+import type { CaseAction, RefillCase, Role } from '../src/domain/engine.js';
+import { createCase, SCENARIOS } from '../src/domain/seed.js';
 type Request={method?:string;headers:Record<string,string|string[]|undefined>;body?:unknown};
 type Response={status:(code:number)=>Response;json:(body:unknown)=>void;setHeader:(key:string,value:string)=>void};
 // The service role key is used only here. Every query is explicitly tenant-scoped.

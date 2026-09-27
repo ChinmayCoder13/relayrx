@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import { INPUTS } from '../src/domain/engine';
-import type { RefillCase, Role } from '../src/domain/engine';
-import { copilotContext, copilotInstruction, copilotKey } from '../src/domain/copilot';
+import { INPUTS } from '../src/domain/engine.js';
+import type { RefillCase, Role } from '../src/domain/engine.js';
+import { copilotContext, copilotInstruction, copilotKey } from '../src/domain/copilot.js';
 
 export type ApiRequest={method?:string;headers:Record<string,string|string[]|undefined>;body?:unknown};
 export type ApiResponse={status:(code:number)=>ApiResponse;json:(body:unknown)=>void;setHeader:(key:string,value:string)=>void};
