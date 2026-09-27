@@ -54,8 +54,14 @@ Select **Pharmacy**. Ask the Pharmacy AI Copilot: “What still needs verificati
 ## Additional checks
 
 - Complete an action before three minutes: the previous step's deadline must not cause a later alert. Only a new three-minute wait for the new pending action can do that.
-- Reload during a wait: the countdown continues from the saved timestamp.
+- Reload during a wait: a fresh presentation countdown begins at 3:00; saved evidence and workflow progress remain unchanged.
 - Closed or declined cases never enter Needs Attention.
 - Drag the round launcher to reposition it. Arrow keys move a focused launcher; Home returns it to the lower right. Escape closes the panel.
 - In **Circuit lab**, a 15/15 signal with a clinician hold stays locked.
 - In **Growth playbook**, show pilot qualification, activation, retention, and measurable staff-time/resolution outcomes.
+
+## Rehearse with version 1.2
+
+Open or refresh the page to start a fresh 3-minute simulation over the saved cases. The **Restart timer** icon beside the selected countdown restarts only that case; no database clearing is needed. It does not authorize, route, dispense, or resolve the refill. Closing/reopening the copilot or switching roles does not restart the clock. Resolved/declined cases remain stopped.
+
+If Gemini is rate limited, unreachable, or unconfigured, the same panel returns **[Offline Mode: Logic Engine Backup]**, labeled as not AI-generated. It explains the current role, blocker, queue priority, comparator, and next action. **Try Gemini again** requests a fresh model answer. Never present backup text as a live Gemini response.

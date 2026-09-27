@@ -46,9 +46,20 @@ try {
           setHeader(name, value) { headers[name] = value; },
         };
         const isCopilot = url.endsWith('/copilot.js');
-        await handler({ method: isCopilot ? 'POST' : 'GET', headers: {} }, response);
-        assert.equal(status, 503);
-        assert.match(body.error, /not configured/);
+        const request = { method: isCopilot ? 'POST' : 'GET', headers: {} };
+        if (isCopilot) {
+          const { createCase } = await import(new URL('../src/domain/seed.js', url));
+          const { copilotKey } = await import(new URL('../src/domain/copilot.js', url));
+          const c = createCase('Synthetic', 'Example', 'No refills remaining');
+          request.headers['content-type'] = 'application/json';
+          request.body = { case: c, role: 'staff', question: 'Why is this blocked?', snapshotKey: copilotKey(c, 'staff'), history: [] };
+        }
+        const originalLog = console.error;
+        try { console.error = () => {}; await handler(request, response); }
+        finally { console.error = originalLog; }
+        assert.equal(status, isCopilot ? 200 : 503);
+        if (isCopilot) { assert.equal(body.provider, 'Logic Engine'); assert.match(body.text, /Offline Mode: Logic Engine Backup/); }
+        else assert.match(body.error, /not configured/);
         assert.match(headers['Cache-Control'], /no-store/);
         if (isCopilot) assert.equal(body.code, 'GEMINI_NOT_CONFIGURED');
       }
@@ -56,7 +67,7 @@ try {
     `;
     const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
       cwd: root, encoding: 'utf8', timeout: 30000,
-      env: { ...process.env, GEMINI_API_KEY: '', SUPABASE_URL: '', SUPABASE_SERVICE_ROLE_KEY: '' },
+      env: { ...process.env, GEMINI_API_KEY: '', SUPABASE_URL: '', SUPABASE_SERVICE_ROLE_KEY: '', VITE_DATA_MODE: 'demo', DEMO_COPILOT_ENABLED: 'true' },
     });
     if (result.stdout) process.stdout.write(result.stdout);
     if (result.stderr) process.stderr.write(result.stderr);

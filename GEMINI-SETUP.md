@@ -10,7 +10,7 @@ All three copilots use one server-side Gemini integration. You never need to pas
 4. Select the environments where you want to use it, then save.
 5. **Redeploy** (or push a new commit) so the server function receives the key.
 
-Optional: add `GEMINI_MODEL` if you want a different model enabled for your key. The default is `gemini-3.5-flash`. Set `DEMO_COPILOT_ENABLED=false` if you want to disable the unauthenticated demo endpoint; connected mode still requires valid Supabase membership.
+Optional: add `GEMINI_MODEL` if you want a different model enabled for your key. The default is `gemini-3.5-flash-lite`. Set `DEMO_COPILOT_ENABLED=false` if you want to disable the unauthenticated demo endpoint; connected mode still requires valid Supabase membership.
 
 Do not use `VITE_GEMINI_API_KEY`: `VITE_` variables are public browser values. Do not commit the key to Git. No key is included in this ZIP.
 
@@ -26,7 +26,7 @@ Edit `.env.local` and set:
 
 ```dotenv
 GEMINI_API_KEY=PASTE_YOUR_KEY_HERE
-GEMINI_MODEL=gemini-3.5-flash
+GEMINI_MODEL=gemini-3.5-flash-lite
 VITE_DATA_MODE=demo
 DEMO_COPILOT_ENABLED=true
 ```
@@ -52,7 +52,15 @@ In demo mode, change roles using either the main selector or the copilot's role 
 
 The green/orange live case card always works without Gemini and is labeled **Verified workflow state · not an AI response**. Generated answers are labeled **Gemini · review before using**. Drafts do not send messages or update cases.
 
-## If you see an error
+## When Gemini is unavailable
+
+The API has a 30-second Vercel function budget. Provider attempts have a 9-second timeout with at most one retry for transient service/network failures. Quota and key/model errors do not retry. All three roles then receive **[Offline Mode: Logic Engine Backup]**, a deterministic summary of the current workflow, owner, attention flag, comparator, and next action. It is labeled **not AI-generated** and never makes clinical decisions or changes a case. Use **Try Gemini again** after the provider recovers.
+
+The same backup works without a key, after request validation and (in connected mode) authentication and tenant checks. A client connection failure can summarize the last loaded case, clearly marked as such. Authentication failures and stale or unverifiable connected records remain errors. Logs include safe error stacks and HTTP status codes; credentials, notes, and raw provider bodies are excluded.
+
+The current default is a supported low-latency Flash-Lite model. Do not configure Gemini 1.5 Flash: Google shut it down on September 29, 2025. An existing `GEMINI_MODEL` environment variable overrides the code default; update it if needed and redeploy. References: [Google release notes](https://ai.google.dev/gemini-api/docs/changelog#september-29-2025), [current model](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite).
+
+## If you see a setup or access notice
 
 - **Not configured:** check the exact variable name, selected Vercel environment, and redeploy/restart.
 - **Model unavailable:** set `GEMINI_MODEL` to a model available to your Google project, then redeploy/restart.

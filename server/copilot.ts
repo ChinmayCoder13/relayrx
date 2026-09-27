@@ -2,6 +2,9 @@ import { createClient } from '@supabase/supabase-js';
 import { INPUTS } from '../src/domain/engine.js';
 import type { RefillCase, Role } from '../src/domain/engine.js';
 import { copilotContext, copilotInstruction, copilotKey } from '../src/domain/copilot.js';
+import { logicEngineBackup } from '../src/domain/copilotFallback.js';
+import { withSimulationTimer, SimulationTimerError } from '../src/domain/simulation.js';
+import { DEFAULT_GEMINI_MODEL, GeminiFailure, generateGemini } from './gemini.js';
 
 export type ApiRequest={method?:string;headers:Record<string,string|string[]|undefined>;body?:unknown};
 export type ApiResponse={status:(code:number)=>ApiResponse;json:(body:unknown)=>void;setHeader:(key:string,value:string)=>void};
@@ -17,15 +20,17 @@ function parseCase(raw:unknown):RefillCase {
  // Names, identifiers beyond the case reference, and medication details are not needed.
  return {...c,patient:'Synthetic case',initials:'SC',medication:'',pharmacy:'',updates:[]};
 }
-export function createCopilotHandler(options:{env?:()=>NodeJS.ProcessEnv;fetcher?:typeof fetch;clock?:()=>number}={}){
+export function createCopilotHandler(options:{env?:()=>NodeJS.ProcessEnv;fetcher?:typeof fetch;clock?:()=>number;sleep?:(ms:number)=>Promise<void>;logger?:(message:string,error?:unknown)=>void;providerTimeoutMs?:number}={}){
  const env=options.env||(()=>process.env),fetcher=options.fetcher||((...args)=>fetch(...args)),clock=options.clock||Date.now;
+ const log=options.logger||((message:string,error?:unknown)=>console.error(message,error));
  const limits=new Map<string,{until:number;used:number}>();
  function permit(key:string,max:number){const now=clock();let record=limits.get(key);if(!record||now>=record.until){record={until:now+60000,used:0};limits.set(key,record);}if(record.used>=max)return false;record.used++;if(limits.size>1000)for(const [k,v] of limits)if(v.until<now)limits.delete(k);return true;}
  return async function handler(req:ApiRequest,res:ApiResponse){
   res.setHeader('Cache-Control','private, no-store');res.setHeader('Vary','Authorization');
   if(req.method!=='POST'){res.setHeader('Allow','POST');return res.status(405).json({error:'Use POST to ask the copilot.'});}
   const config=env(),key=config.GEMINI_API_KEY?.trim();
-  if(!key)return res.status(503).json({error:'Gemini is not configured. Add GEMINI_API_KEY to .env.local locally, or Vercel → Project Settings → Environment Variables, then restart or redeploy.',code:'GEMINI_NOT_CONFIGURED'});
+  // Finish before Vercel's 30-second budget, including connected-state verification.
+  const requestSignal=AbortSignal.timeout(26000);
   try{
    if(!String(req.headers['content-type']||'').startsWith('application/json'))throw new RequestError(415,'Use application/json.');
    const input=typeof req.body==='string'?req.body:JSON.stringify(req.body||{});
@@ -39,7 +44,7 @@ export function createCopilotHandler(options:{env?:()=>NodeJS.ProcessEnv;fetcher
     if(!config.SUPABASE_URL||!config.SUPABASE_SERVICE_ROLE_KEY)throw new RequestError(503,'The connected workspace is not configured.');
     const auth=req.headers.authorization;
     if(typeof auth!=='string'||!auth.startsWith('Bearer '))throw new RequestError(401,'Sign in to your workspace first.');
-    const db=createClient(config.SUPABASE_URL,config.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false},global:{fetch:(input,init)=>fetcher(input,{...init,signal:AbortSignal.timeout(10000)})}});
+    const db=createClient(config.SUPABASE_URL,config.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false},global:{fetch:(input,init)=>fetcher(input,{...init,signal:AbortSignal.any([requestSignal,AbortSignal.timeout(5000)])})}});
     const {data:{user},error}=await db.auth.getUser(auth.slice(7));
     if(error||!user)throw new RequestError(401,'Your workspace session could not be verified.');
     const {data:member,error:memberError}=await db.from('rr_memberships').select('tenant_id,role').eq('user_id',user.id).single();
@@ -55,35 +60,33 @@ export function createCopilotHandler(options:{env?:()=>NodeJS.ProcessEnv;fetcher
     role=body.role;current=parseCase(body.case);loadLatest=async()=>current;
     const address=String(req.headers['x-forwarded-for']||'local').split(',')[0].trim();limitId=`demo:${address}`;
    }
-   const initialKey=copilotKey(current,role,clock());
+   const view=withSimulationTimer(current,body.simulationTimer,clock());
+   const initialKey=copilotKey(view,role,clock());
    if(body.snapshotKey!==initialKey)throw new RequestError(409,'The case or attention state changed. Use the current case and ask again.');
-   if(!permit(limitId,12)||!permit('all',40)){res.setHeader('Retry-After','60');throw new RequestError(429,'Too many copilot questions. Wait one minute before asking again.');}
-   const model=config.GEMINI_MODEL?.trim()||'gemini-3.5-flash';
-   if(!/^[a-zA-Z0-9._-]{1,90}$/.test(model))throw new RequestError(503,'GEMINI_MODEL must be a valid model ID.');
-   const context=copilotContext(current,role,clock());
-   const response=await fetcher(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{
-    method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},signal:AbortSignal.timeout(30000),
-    body:JSON.stringify({systemInstruction:{parts:[{text:copilotInstruction(role)}]},contents:[{role:'user',parts:[{text:JSON.stringify({currentCase:context,historyFromSameSnapshot:history,question:body.question.trim()})}]}],generationConfig:{temperature:0.2,maxOutputTokens:2500}})
-   });
-   if(!response.ok){
-    if(response.status===429)throw new RequestError(429,'Gemini quota or rate limit reached. Check your API quota, then try again.');
-    if([400,401,403].includes(response.status))throw new RequestError(502,'Gemini rejected the request. Check your server-side key, API restrictions, project access, and GEMINI_MODEL.');
-    if(response.status===404)throw new RequestError(502,'The configured Gemini model is unavailable. Set GEMINI_MODEL to a model enabled for your key.');
-    throw new RequestError(502,'Gemini is temporarily unavailable. Your case was not changed.');
+   const model=config.GEMINI_MODEL?.trim()||DEFAULT_GEMINI_MODEL;
+   let text='',failure:GeminiFailure|undefined;
+   try{
+    if(!permit(limitId,12)||!permit('all',40)){res.setHeader('Retry-After','60');throw new GeminiFailure('COPILOT_RATE_LIMITED','The copilot request limit was reached. Wait one minute before retrying Gemini.');}
+    if(!key){log('GEMINI_API_KEY is undefined on server');throw new GeminiFailure('GEMINI_NOT_CONFIGURED','Gemini is not configured. Add GEMINI_API_KEY in Vercel Environment Variables, then redeploy.');}
+    if(!/^[a-zA-Z0-9._-]{1,90}$/.test(model))throw new GeminiFailure('GEMINI_CONFIGURATION','GEMINI_MODEL must be a valid model ID.');
+    const context={...copilotContext(view,role,clock()),timerScope:body.simulationTimer?'Current browser visit; presentation-only simulation clock. The stored workflow has not been modified.':'Stored workflow waiting timestamp.'};
+    text=await generateGemini({model,key,fetcher,signal:requestSignal,sleep:options.sleep,timeoutMs:options.providerTimeoutMs,payload:{systemInstruction:{parts:[{text:copilotInstruction(role)}]},contents:[{role:'user',parts:[{text:JSON.stringify({currentCase:context,historyFromSameSnapshot:history,question:body.question.trim()})}]}],generationConfig:{temperature:0.2,maxOutputTokens:1600}}});
+   }catch(error){
+    failure=error instanceof GeminiFailure?error:new GeminiFailure('GEMINI_NETWORK','The Gemini request could not be completed.',true);
+    // These error objects contain only controlled diagnostics, never raw provider bodies or secrets.
+    log('Gemini Copilot Error:',failure);
    }
-   const result=await response.json();
-   const candidate=result.candidates?.[0];
-   if(candidate?.finishReason&&candidate.finishReason!=='STOP')throw new RequestError(502,'Gemini did not return a complete answer. Try a shorter question.');
-   const text=(candidate?.content?.parts||[]).filter((p:{thought?:boolean;text?:string})=>!p.thought&&typeof p.text==='string').map((p:{text:string})=>p.text).join('\n').trim();
-   if(!text||text.length>12000)throw new RequestError(502,'Gemini returned no usable answer. Your case was not changed.');
-   const latest=await loadLatest();
+   // Both Gemini and backup answers must pass the same latest-state/tenant checks.
+   const latest=withSimulationTimer(await loadLatest(),body.simulationTimer,clock());
    if(copilotKey(latest,role,clock())!==initialKey)throw new RequestError(409,'The case changed while Gemini was responding. Refresh the explanation for the current state.');
-   return res.status(200).json({text,snapshotKey:initialKey,model,role,asOf:new Date(clock()).toISOString(),provider:'Gemini'});
+   if(failure)return res.status(200).json({text:logicEngineBackup(latest,role,body.question,clock()),snapshotKey:initialKey,model:null,role,asOf:new Date(clock()).toISOString(),provider:'Logic Engine',mode:'offline',code:failure.code,notice:failure.message,retryable:failure.retryable});
+   return res.status(200).json({text,snapshotKey:initialKey,model,role,asOf:new Date(clock()).toISOString(),provider:'Gemini',mode:'online'});
   }catch(error){
-   if(error instanceof RequestError)return res.status(error.code).json({error:error.message});
-   // Never expose upstream errors, secrets, tokens, notes, or request bodies.
+   if(error instanceof SimulationTimerError)return res.status(409).json({error:error.message});
+   if(error instanceof RequestError){if(error.code>=500)log('Gemini Copilot Error:',error);return res.status(error.code).json({error:error.message,...(error.code>=500?{code:'WORKSPACE_UNVERIFIED'}:{})});}
+   log('Gemini Copilot Error:',new Error('Could not verify the authorized current workspace state. No fallback was returned.'));
    const timedOut=error instanceof Error&&['TimeoutError','AbortError'].includes(error.name);
-   return res.status(timedOut?504:503).json({error:timedOut?'Gemini timed out. Your case was not changed; you can try again.':'Copilot is temporarily unavailable. The human workflow is still available.'});
+   return res.status(timedOut?504:503).json({error:'Could not verify the current workspace state. Refresh before asking again.',code:'WORKSPACE_UNVERIFIED'});
   }
  };
 }

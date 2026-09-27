@@ -17,7 +17,7 @@ The bottleneck is unresolved dependency ownership. A shared case asks: what is m
 | Supabase/Postgres | Schema, RLS, read grants, atomic state/audit RPC | One workspace per user; no cross-org case-level ACL |
 | Integrations | Simulated queue, failure, pharmacy confirmation | No real EHR, pharmacy, insurance, or notification adapter |
 | Intelligence | Deterministic blockers plus three read-only Gemini copilots | Requires server key; no clinical decisions or model-driven workflow writes |
-| Waiting attention | Per-action persisted start; 3 minutes = 30 simulated hours; live count/filter | Derived queue state, no background notifications or automatic resolution |
+| Waiting attention | Per-visit simulation over the saved per-action start; 3 minutes = 30 simulated hours; live count/filter | Derived queue state, no background notifications or automatic resolution |
 | Growth | Stage transitions, pilot criteria, buyer map, pricing/ROI hypothesis | Does not send campaigns or manage a real CRM |
 
 ## Architecture
@@ -77,11 +77,11 @@ Coverage blocking is an additional independent dependency before ReadyToRoute. T
 
 ## Waiting and Needs Attention
 
-A case stores `waitingSince`, the start of its currently required step. `attention(case, now)` is derived from a pending next action and elapsed time ≥180,000 ms. At exactly three minutes, the simulated wait is 30 hours. The count and filter update every second and on focus. They also recompute after browser reload; there is no in-memory `setTimeout` capable of changing a case later.
+A case stores `waitingSince`, the start of its currently required step. `attention(case, now)` is derived from a pending next action and elapsed time ≥180,000 ms. At exactly three minutes, the simulated wait is 30 hours. The count and filter update every second and on focus. A fresh page visit projects a new start for each pending case, tracked in session storage. The Restart timer control updates only this projection. Role changes, viewing, polling, and expiry preserve the current visit’s clock. There is no in-memory `setTimeout` capable of changing a case later.
 
 Needs Attention is orthogonal to `state(case)`. It cannot alter transport, owner, evidence, signal, events, version, or `resolvedAt`. Completing the current step starts a fresh timer for the next step; confirmed pickup and decline stop the timer. Merely viewing the case, asking Gemini, saving a message preview, requesting information, failing a retry, or recording escalation cannot hide the unresolved wait. Failed retries retain their original wait even when the next action becomes escalation.
 
-New synthetic seeds start fresh three-minute timers. Existing browser-local cases without this field receive one persisted grace period on upgrade, without modifying their clinical workflow. Legacy connected records fall back to their last progress event or creation time until the next workflow action persists the field. No SQL migration is required. Browser demo timing trusts the device clock; connected display timing uses a server time offset, and the copilot evaluates its snapshot on the server. This is an accelerated demonstration, not a clinical urgency or production SLA policy.
+New seeds and old records both get a fresh three-minute presentation timer on every page load. Durable `waitingSince` remains the actual workflow timestamp. No reset is written to local case storage or Supabase. Legacy connected records fall back to their last progress event or creation time until the next workflow action persists the field. No SQL migration is required. Browser demo timing trusts the device clock; connected display timing uses a server time offset, and the copilot evaluates its snapshot on the server. This is an accelerated demonstration, not a clinical urgency or production SLA policy.
 
 ## Roles
 
@@ -149,7 +149,7 @@ Context includes the actual workflow state, attention flag, waiting start, next 
 
 The snapshot key changes with case version, role, pending step, wait start, or attention threshold. The browser aborts outstanding questions when that key changes, hides earlier guidance, and never includes it in new model context. The server rejects stale requests and responses with HTTP 409. A changed case requires a new question; the app does not silently trigger another paid model call.
 
-The key is `GEMINI_API_KEY`, kept server-side. `GEMINI_MODEL` is configurable. Requests have a 30-second Gemini timeout, bounded text/history, no-store responses, and a per-instance rate limit (12 per user/IP and 40 total per minute). These limits are not shared across serverless instances; use access protection and durable rate limiting before a public commercial deployment. Set `DEMO_COPILOT_ENABLED=false` to turn off unauthenticated demo AI. Missing keys, quota failures, incomplete output, and timeouts show errors; there is no fabricated fallback answer. The human workflow remains available.
+The key is `GEMINI_API_KEY`, kept server-side. `GEMINI_MODEL` is configurable. The Vercel function budget is 30 seconds, with a 26-second overall request deadline and at most two 9-second provider attempts. Requests have bounded text/history and no-store responses, and a per-instance rate limit (12 per user/IP and 40 total per minute). These limits are not shared across serverless instances; use access protection and durable rate limiting before a public commercial deployment. Set `DEMO_COPILOT_ENABLED=false` to turn off unauthenticated demo AI. Missing keys, quota failures, incomplete output, and provider timeouts return a labeled deterministic logic-engine backup with current role, status, attention, owner, signal, and next action. Backup text is never labeled as Gemini or AI-generated. Authorization and latest-state verification apply to both response modes; unverified connected data fails closed. The human workflow remains available.
 
 A later ingestion assistant could propose fields from faxes with source references and explicit uncertainty. That is outside this update. Staff would still need to validate every proposed field before changing evidence.
 

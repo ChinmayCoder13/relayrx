@@ -58,7 +58,7 @@
   ],
   "functions": {
     "api/copilot.ts": {
-      "maxDuration": 60
+      "maxDuration": 30
     }
   }
 }

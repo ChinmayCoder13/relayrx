@@ -1,5 +1,17 @@
 # RelayRx update notes
 
+## 1.2.0 — fresh-visit timers and resilient copilots
+
+- Each fresh page load (including refresh/new tabs) starts a new 3-minute simulation for pending cases. Session storage tracks that visit's clocks; saved case timestamps, evidence, and database records are preserved.
+- The **Restart timer** control resets only the selected case's presentation clock. Routine polling, role changes, notes, and expiry do not reset it. Human workflow progress starts the next step's timer; completed/declined cases stay stopped.
+- Queue counts, filters, Insights, all three copilots, and their snapshot checks share the same projected clock. Connected copilots still load and authorize the actual tenant-scoped case before applying the presentation-only timer.
+- Gemini receives a 30-second function budget, bounded provider timeouts, and at most one retry for transient service/network errors. The supported default model is `gemini-3.5-flash-lite`, with an environment override. Gemini 1.5 Flash is retired.
+- Provider failures, quota limits, or missing configuration return **[Offline Mode: Logic Engine Backup]**: role-specific, deterministic case guidance labeled as not AI-generated. Authentication, tenant isolation, stale-state checks, and prescribing/fulfillment boundaries still apply.
+- Safe error logs identify the failure without recording credentials or case text. No API key is committed.
+- Validation: 50 tests, production build, and native Node API checks pass.
+
+The older release notes below describe previous behavior; 1.2.0 supersedes their persisted demo-clock and error-only Gemini behavior.
+
 ## 1.1.1 — Vercel runtime and sidebar fixes
 
 - Fix the `ERR_MODULE_NOT_FOUND` crash by using explicit `.js` extensions throughout both API entry points and their server dependency graph.

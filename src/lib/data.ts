@@ -12,7 +12,7 @@ export function loadDemo():RefillCase[]{
  try{const raw=JSON.parse(localStorage.getItem(KEY)||'null');if(Array.isArray(raw)&&raw.length<=200&&raw.every(c=>c.id&&c.patient&&c.inputs&&['identity','prescription','visit','coverage','approval'].every(k=>typeof c.inputs[k]?.verified==='boolean')&&Array.isArray(c.events)&&Array.isArray(c.updates)&&Number.isInteger(c.version)))records=raw;}catch{/* Start a clean demo if storage is unavailable or malformed. */}
  const now=new Date().toISOString();
  const result=(records||seedCases()).map(c=>c.waitingSince===undefined?{...c,waitingSince:c.declined||c.transport==='dispensed'?null:now}:c);
- // Persist initialization once. Reloading or switching tabs never restarts a timer.
+ // Preserve the durable workflow wait. Browser-visit simulation clocks are separate.
  if(!records||result.some((c,i)=>c!==records![i]))try{saveDemo(result);}catch{/* Storage failure is surfaced if a user tries to save an action. */}
  return result;
 }
