@@ -12,7 +12,7 @@ The bottleneck is unresolved dependency ownership. A shared case asks: what is m
 |---|---|---|
 | React + TypeScript + Vite | Six views and complete sample workflow | Synthetic data only |
 | Workflow engine | Deterministic rules shared by client demo and server | Example workflow, not a clinical protocol |
-| Local demo | Seed cases, role simulation, browser persistence | No access control; history is locally editable |
+| Local demo | Seed cases, role simulation, independent in-memory visits | No access control; reload restores sample data |
 | Vercel API | Session validation, membership lookup, role enforcement | Requires user configuration and hosted verification |
 | Supabase/Postgres | Schema, RLS, read grants, atomic state/audit RPC | One workspace per user; no cross-org case-level ACL |
 | Integrations | Simulated queue, failure, pharmacy confirmation | No real EHR, pharmacy, insurance, or notification adapter |
@@ -81,7 +81,7 @@ A case stores `waitingSince`, the start of its currently required step. `attenti
 
 Needs Attention is orthogonal to `state(case)`. It cannot alter transport, owner, evidence, signal, events, version, or `resolvedAt`. Completing the current step starts a fresh timer for the next step; confirmed pickup and decline stop the timer. Merely viewing the case, asking Gemini, saving a message preview, requesting information, failing a retry, or recording escalation cannot hide the unresolved wait. Failed retries retain their original wait even when the next action becomes escalation.
 
-New seeds and old records both get a fresh three-minute presentation timer on every page load. Durable `waitingSince` remains the actual workflow timestamp. No reset is written to local case storage or Supabase. Legacy connected records fall back to their last progress event or creation time until the next workflow action persists the field. No SQL migration is required. Browser demo timing trusts the device clock; connected display timing uses a server time offset, and the copilot evaluates its snapshot on the server. This is an accelerated demonstration, not a clinical urgency or production SLA policy.
+Every demo page load restores all six original sample cases; the in-memory demo store is isolated per document and never reads legacy localStorage. Connected records retain their database history. Both modes get a fresh three-minute presentation timer on every page load. Durable `waitingSince` remains the actual workflow timestamp. Restart timer changes no workflow evidence or Supabase records. Legacy connected records fall back to their last progress event or creation time until the next workflow action persists the field. No SQL migration is required. Browser demo timing trusts the device clock; connected display timing uses a server time offset, and the copilot evaluates its snapshot on the server. This is an accelerated demonstration, not a clinical urgency or production SLA policy.
 
 ## Roles
 

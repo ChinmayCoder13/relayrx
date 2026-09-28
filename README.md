@@ -78,6 +78,7 @@ Official deployment references: [Vite on Vercel](https://vercel.com/docs/framewo
 ## What's included
 
 - **Refill workspace:** synthetic intake, queue search/filter, role views, next action, evidence capture, and audit history.
+- **Fresh demo visits:** opening a link in a new tab or reloading restores the original six sample cases, names, evidence, and role. Demo changes remain in memory for the current visit; switching roles or screens preserves them. Other tabs stay independent. Connected Supabase records remain persistent.
 - **Waiting timer:** each fresh page visit starts a local 3-minute clock per pending action, equivalent to 30 simulated hours. Restart timer rehearses one case without changing saved evidence or database timestamps. Expiry updates the existing Needs Attention count/filter while preserving the actual workflow status.
 - **Three Gemini copilots:** a round movable launcher opens Practice Staff, Clinician, or Pharmacy assistance using live case context. Explanations and drafts are read-only; authorization and fulfillment stay human-controlled. If Gemini is unavailable, an explicitly labeled logic-engine backup summarizes the actual case.
 - **Refill circuit:** five mandatory inputs, 0–15 readiness, fixed comparator threshold, and an independent clinician hold.
@@ -140,10 +141,10 @@ Follow [docs/DEMO.md](docs/DEMO.md). For architecture, API shape, state transiti
 
 ## Verification
 
-The update passes 50 automated tests and the production TypeScript/Vite build. Coverage includes exact timer boundaries, completing actions just before expiry, attention recovery, stale deadlines, closed/declined exclusions, retry behavior, all three copilot contexts, server-only key handling, fresh-visit timers, per-case restart, bounded provider retries, role-specific offline backups, stale Gemini/backup responses, tenant/role checks, and the original workflow/database tests.
+The update passes 52 automated tests and the production TypeScript/Vite build. Coverage includes exact timer boundaries, completing actions just before expiry, attention recovery, stale deadlines, closed/declined exclusions, retry behavior, all three copilot contexts, server-only key handling, fresh-visit timers, per-case restart, bounded provider retries, role-specific offline backups, stale Gemini/backup responses, tenant/role checks, and the original workflow/database tests.
 
 Gemini API behavior is tested with mocked upstream responses. A real response requires your key and enabled model. Supabase Auth and a real Vercel deployment require verification with your configured services. The browser demonstration checks real elapsed time, the attention count/filter, pharmacy continuation, pickup resolution, role-specific panels, key-setup feedback, and dragging the launcher. This is not a completed accessibility or device certification.
 
 ## Scope and security
 
-This is a hackathon MVP and test sandbox. Seed evidence is fictional. Demo role selection is **not authentication** and local history is editable through browser storage. No clinical prescribing decision, insurance determination, or live message delivery is automated. Full clinical validation, professional identity verification, case-level sharing across organizations, infrastructure hardening, agreements, integration validation, monitoring, and legal/privacy review are prerequisites for a real patient-data deployment. No compliance certification is claimed.
+This is a hackathon MVP and test sandbox. Seed evidence is fictional. Demo role selection is **not authentication** and demo history exists only in the current page’s memory. No clinical prescribing decision, insurance determination, or live message delivery is automated. Full clinical validation, professional identity verification, case-level sharing across organizations, infrastructure hardening, agreements, integration validation, monitoring, and legal/privacy review are prerequisites for a real patient-data deployment. No compliance certification is claimed.

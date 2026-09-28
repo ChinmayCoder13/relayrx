@@ -3,20 +3,15 @@ import { demoActors } from '../domain/identity';
 import { createClient } from '@supabase/supabase-js';
 import { applyAction } from '../domain/engine';
 import type { CaseAction, RefillCase, Role } from '../domain/engine';
-import { createCase, seedCases } from '../domain/seed';
+import { createCase } from '../domain/seed';
+import { createDemoSession } from './demoSession';
 export const connected = import.meta.env.VITE_DATA_MODE === 'supabase';
 export const supabase = connected && import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY ? createClient(import.meta.env.VITE_SUPABASE_URL,import.meta.env.VITE_SUPABASE_ANON_KEY,{auth:{persistSession:false,autoRefreshToken:true}}) : null;
-const KEY='relayrx-synthetic-demo-v1';
-export function loadDemo():RefillCase[]{
- let records:RefillCase[]|undefined;
- try{const raw=JSON.parse(localStorage.getItem(KEY)||'null');if(Array.isArray(raw)&&raw.length<=200&&raw.every(c=>c.id&&c.patient&&c.inputs&&['identity','prescription','visit','coverage','approval'].every(k=>typeof c.inputs[k]?.verified==='boolean')&&Array.isArray(c.events)&&Array.isArray(c.updates)&&Number.isInteger(c.version)))records=raw;}catch{/* Start a clean demo if storage is unavailable or malformed. */}
- const now=new Date().toISOString();
- const result=(records||seedCases()).map(c=>c.waitingSince===undefined?{...c,waitingSince:c.declined||c.transport==='dispensed'?null:now}:c);
- // Preserve the durable workflow wait. Browser-visit simulation clocks are separate.
- if(!records||result.some((c,i)=>c!==records![i]))try{saveDemo(result);}catch{/* Storage failure is surfaced if a user tries to save an action. */}
- return result;
-}
-export function saveDemo(cases:RefillCase[]){localStorage.setItem(KEY,JSON.stringify(cases));}
+// Never hydrate yesterday's demo or a different tab's rehearsal from storage.
+// Supabase persistence is independent and continues through api() below.
+const demoSession=createDemoSession();
+export function loadDemo():RefillCase[]{return demoSession.load();}
+export function saveDemo(cases:RefillCase[]){demoSession.save(cases);}
 export function demoAction(cases:RefillCase[],id:string,action:CaseAction,role:Role){
  const current=cases.find(c=>c.id===id);if(!current)throw new Error('Refill not found.');
  const changed=applyAction(current,action,role,`${demoActors[role]} (demo)`);

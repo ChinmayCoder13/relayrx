@@ -1,5 +1,14 @@
 # RelayRx update notes
 
+## 1.2.1 — original demo restored on every visit
+
+- Fresh links, new tabs, and full page reloads restore the six original sample cases, names, evidence, default staff role, and 3-minute timers.
+- Demo actions remain in memory for the current document. Other tabs are isolated; legacy localStorage is ignored. Role changes and in-app navigation preserve progress.
+- Supabase case persistence is unchanged. Restart timer still resets only one presentation clock.
+- Validation: 52 tests, production build, and native Node API checks pass.
+
+This supersedes the older release notes’ browser-persisted demo history.
+
 ## 1.2.0 — fresh-visit timers and resilient copilots
 
 - Each fresh page load (including refresh/new tabs) starts a new 3-minute simulation for pending cases. Session storage tracks that visit's clocks; saved case timestamps, evidence, and database records are preserved.
