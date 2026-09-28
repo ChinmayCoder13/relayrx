@@ -65,7 +65,7 @@ export default function Copilot({c,sourceCase,simulationTimer,role,now,onRoleCha
      {error&&<div className="copilot-error" role="alert">{error}</div>}
     </>:<p className="copilot-intro">Select or create a refill to use a role-specific copilot.</p>}
    </div>
-   <form className="copilot-composer" onSubmit={submit}><label className="sr-only" htmlFor="copilot-question">Ask about the selected case</label><textarea ref={input} id="copilot-question" value={question} maxLength={1200} rows={2} placeholder="Ask about this refill…" disabled={!c} onChange={e=>setQuestion(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();void ask(question);}}}/><button className="copilot-send" type="submit" aria-label="Ask Gemini" disabled={!c||busy||question.trim().length<2}><Send size={17}/></button></form>
+   <form className="copilot-composer" onSubmit={submit}><label className="sr-only" htmlFor="copilot-question">Ask about the selected case</label><textarea ref={input} id="copilot-question" value={question} maxLength={1200} rows={2} placeholder="Say hi or ask about this refill" disabled={!c} onChange={e=>setQuestion(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();void ask(question);}}}/><button className="copilot-send" type="submit" aria-label="Ask Gemini" disabled={!c||busy||question.trim().length<2}><Send size={17}/></button></form>
    <div className="copilot-footer"><LockKeyhole size={11}/><span>Humans decide and act. Synthetic data only.</span><Grip size={13}/></div>
   </section>}
  </>;
