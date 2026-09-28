@@ -1,5 +1,12 @@
 # RelayRx update notes
 
+## 1.2.2 — final demo review
+
+- Standalone greetings give concise role-specific help instead of an unrelated case summary, without spending Gemini quota. Built-in replies are clearly labeled RelayRx.
+- Gemini answers focus on the actual question; drafts are produced only when requested.
+- Added `npm run check:live` for deployment routes, assets, and serverless startup, with an optional synthetic copilot check.
+- Validation: 55 automated tests, production build, and native Node API checks pass.
+
 ## 1.2.1 — original demo restored on every visit
 
 - Fresh links, new tabs, and full page reloads restore the six original sample cases, names, evidence, default staff role, and 3-minute timers.

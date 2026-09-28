@@ -141,10 +141,16 @@ Follow [docs/DEMO.md](docs/DEMO.md). For architecture, API shape, state transiti
 
 ## Verification
 
-The update passes 52 automated tests and the production TypeScript/Vite build. Coverage includes exact timer boundaries, completing actions just before expiry, attention recovery, stale deadlines, closed/declined exclusions, retry behavior, all three copilot contexts, server-only key handling, fresh-visit timers, per-case restart, bounded provider retries, role-specific offline backups, stale Gemini/backup responses, tenant/role checks, and the original workflow/database tests.
+The update passes 55 automated tests and the production TypeScript/Vite build. Coverage includes exact timer boundaries, completing actions just before expiry, attention recovery, stale deadlines, closed/declined exclusions, retry behavior, all three copilot contexts, server-only key handling, fresh-visit timers, per-case restart, bounded provider retries, role-specific offline backups, stale Gemini/backup responses, tenant/role checks, and the original workflow/database tests.
 
 Gemini API behavior is tested with mocked upstream responses. A real response requires your key and enabled model. Supabase Auth and a real Vercel deployment require verification with your configured services. The browser demonstration checks real elapsed time, the attention count/filter, pharmacy continuation, pickup resolution, role-specific panels, key-setup feedback, and dragging the launcher. This is not a completed accessibility or device certification.
 
 ## Scope and security
 
 This is a hackathon MVP and test sandbox. Seed evidence is fictional. Demo role selection is **not authentication** and demo history exists only in the current page’s memory. No clinical prescribing decision, insurance determination, or live message delivery is automated. Full clinical validation, professional identity verification, case-level sharing across organizations, infrastructure hardening, agreements, integration validation, monitoring, and legal/privacy review are prerequisites for a real patient-data deployment. No compliance certification is claimed.
+
+## Demo health checks
+
+Run `npm run check:live` to check the deployed routes, built assets, and serverless startup. Run `npm run check:live -- --with-copilot` to additionally verify all three built-in greetings and make one synthetic Gemini request. No workflow records are written. Exit 0 means healthy, 1 means a failed check, and 2 means Gemini is degraded but the labeled logic backup works. Use `RELAYRX_CHECK_URL` to target another authorized deployment. This check is for the public demo; a connected sandbox requires authenticated verification.
+
+Standalone greetings return a brief role-specific welcome labeled `RelayRx · built-in welcome`; they do not spend Gemini quota or claim to be a model response. Questions about a case still use Gemini.

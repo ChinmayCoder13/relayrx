@@ -17,7 +17,7 @@ export async function askCopilot(c:RefillCase,role:Role,question:string,history:
  }
  const headers:Record<string,string>={'Content-Type':'application/json'};
  if(connected){const {data:{session}}=await supabase!.auth.getSession();if(!session)throw new CopilotError('Sign in to use your role-specific copilot.',401);headers.Authorization=`Bearer ${session.access_token}`;}
- const body={role,question,snapshotKey,simulationTimer,history:history.filter(m=>m.snapshotKey===snapshotKey&&m.provider!=='Logic Engine').slice(-6).map(({role,text})=>({role,text:text.slice(0,2500)})),
+ const body={role,question,snapshotKey,simulationTimer,history:history.filter(m=>m.snapshotKey===snapshotKey&&(m.role==='user'||m.provider==='Gemini')).slice(-6).map(({role,text})=>({role,text:text.slice(0,2500)})),
   ...(connected?{caseId:c.id}:{case:{id:c.id,reason:c.reason,createdAt:c.createdAt,version:c.version,owner:c.owner,inputs:c.inputs,hold:c.hold,declined:c.declined,transport:c.transport,attempts:c.attempts,events:c.events.slice(0,5),resolvedAt:c.resolvedAt,waitingSince:c.waitingSince}})};
  let response:Response,result:Record<string,unknown>;
  try{
@@ -28,6 +28,6 @@ export async function askCopilot(c:RefillCase,role:Role,question:string,history:
   if([429,500,502,503,504].includes(response.status)&&result.code!=='WORKSPACE_UNVERIFIED')return backup('The copilot service is unavailable. Showing the logic engine backup.');
   throw new CopilotError(typeof result.error==='string'?result.error:'Could not verify the current copilot request.',response.status);
  }
- if(typeof result.text!=='string'||!['Gemini','Logic Engine'].includes(String(result.provider))||result.snapshotKey!==snapshotKey)throw new CopilotError('The copilot response did not match the current case. Refresh and ask again.',409);
+ if(typeof result.text!=='string'||!['Gemini','Logic Engine','RelayRx'].includes(String(result.provider))||result.snapshotKey!==snapshotKey)throw new CopilotError('The copilot response did not match the current case. Refresh and ask again.',409);
  return result as CopilotReply;
 }

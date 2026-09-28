@@ -71,3 +71,7 @@ The current default is a supported low-latency Flash-Lite model. Do not configur
 The provided tests use mock Gemini responses; your real key must be checked after configuration. The app remains a synthetic-data hackathon sandbox.
 
 Official reference: https://ai.google.dev/gemini-api/docs/api-key
+
+## Greetings
+
+`hi`, `hello`, and other standalone greetings get a short built-in welcome for the selected role, labeled RelayRx. A message such as “Hi, why is pickup not confirmed?” still goes to Gemini. Case questions do not automatically produce drafts; ask explicitly when you want one.

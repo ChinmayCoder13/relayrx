@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { INPUTS } from '../src/domain/engine.js';
 import type { RefillCase, Role } from '../src/domain/engine.js';
-import { copilotContext, copilotInstruction, copilotKey } from '../src/domain/copilot.js';
+import { copilotContext, copilotGreeting, copilotInstruction, copilotKey } from '../src/domain/copilot.js';
 import { logicEngineBackup } from '../src/domain/copilotFallback.js';
 import { withSimulationTimer, SimulationTimerError } from '../src/domain/simulation.js';
 import { DEFAULT_GEMINI_MODEL, GeminiFailure, generateGemini } from './gemini.js';
@@ -64,8 +64,9 @@ export function createCopilotHandler(options:{env?:()=>NodeJS.ProcessEnv;fetcher
    const initialKey=copilotKey(view,role,clock());
    if(body.snapshotKey!==initialKey)throw new RequestError(409,'The case or attention state changed. Use the current case and ask again.');
    const model=config.GEMINI_MODEL?.trim()||DEFAULT_GEMINI_MODEL;
-   let text='',failure:GeminiFailure|undefined;
-   try{
+   const greeting=copilotGreeting(role,body.question);
+   let text=greeting||'',failure:GeminiFailure|undefined;
+   if(!greeting)try{
     if(!permit(limitId,12)||!permit('all',40)){res.setHeader('Retry-After','60');throw new GeminiFailure('COPILOT_RATE_LIMITED','The copilot request limit was reached. Wait one minute before retrying Gemini.');}
     if(!key){log('GEMINI_API_KEY is undefined on server');throw new GeminiFailure('GEMINI_NOT_CONFIGURED','Gemini is not configured. Add GEMINI_API_KEY in Vercel Environment Variables, then redeploy.');}
     if(!/^[a-zA-Z0-9._-]{1,90}$/.test(model))throw new GeminiFailure('GEMINI_CONFIGURATION','GEMINI_MODEL must be a valid model ID.');
@@ -79,6 +80,7 @@ export function createCopilotHandler(options:{env?:()=>NodeJS.ProcessEnv;fetcher
    // Both Gemini and backup answers must pass the same latest-state/tenant checks.
    const latest=withSimulationTimer(await loadLatest(),body.simulationTimer,clock());
    if(copilotKey(latest,role,clock())!==initialKey)throw new RequestError(409,'The case changed while Gemini was responding. Refresh the explanation for the current state.');
+   if(greeting)return res.status(200).json({text,snapshotKey:initialKey,model:null,role,asOf:new Date(clock()).toISOString(),provider:'RelayRx',mode:'local'});
    if(failure)return res.status(200).json({text:logicEngineBackup(latest,role,body.question,clock()),snapshotKey:initialKey,model:null,role,asOf:new Date(clock()).toISOString(),provider:'Logic Engine',mode:'offline',code:failure.code,notice:failure.message,retryable:failure.retryable});
    return res.status(200).json({text,snapshotKey:initialKey,model,role,asOf:new Date(clock()).toISOString(),provider:'Gemini',mode:'online'});
   }catch(error){

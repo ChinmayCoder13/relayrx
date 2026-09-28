@@ -6,6 +6,7 @@ import { createCase } from '../src/domain/seed';
 import { applyAction } from '../src/domain/engine';
 import type { Role } from '../src/domain/engine';
 import { copilotKey } from '../src/domain/copilot';
+import { logicEngineBackup } from '../src/domain/copilotFallback';
 import { simulationSourceKey, withSimulationTimer } from '../src/domain/simulation';
 function createCopilotHandler(options:Parameters<typeof makeCopilotHandler>[0]={}){return makeCopilotHandler({logger:()=>{},sleep:async()=>{},...options});}
 const start=Date.parse('2026-09-27T12:00:00Z');
@@ -19,6 +20,27 @@ test('unconfigured Gemini returns a labeled logic backup and logs the missing ke
  const handler=createCopilotHandler({env:()=>({}),clock:()=>start+180000,logger:message=>logs.push(message),fetcher:async()=>{throw Error('Must not fetch');}});
  const result=await invoke(handler,request());assert.equal(result.status,200);assert.equal(result.body.code,'GEMINI_NOT_CONFIGURED');assert.equal(result.body.provider,'Logic Engine');assert.match(result.body.notice,/GEMINI_API_KEY/);assert.match(result.headers['Cache-Control'],/no-store/);assert.ok(logs.includes('GEMINI_API_KEY is undefined on server'));assert.match(result.body.text,/\[Offline Mode: Logic Engine Backup\]/);
  assert.equal((await invoke(handler,{method:'GET',headers:{}})).status,405);
+});
+test('standalone greetings give each role a labeled welcome without spending Gemini quota or changing the case',async()=>{
+ for(const role of ['staff','clinician','pharmacy'] as const){
+  const c=fixture(),before=structuredClone(c),req=request(c,role);(req.body as any).question='Hi!';
+  const handler=createCopilotHandler({env:()=>({}),clock:()=>start+180000,fetcher:async()=>{throw Error('A greeting must not call Gemini');}});
+  const result=await invoke(handler,req);assert.equal(result.status,200);assert.equal(result.body.provider,'RelayRx');assert.equal(result.body.mode,'local');assert.equal(result.body.model,null);
+  assert.match(result.body.text,/Hi!.*Copilot/);assert.doesNotMatch(result.body.text,/Needs Attention|Workflow:|DRAFT|12\/15/);assert.deepEqual(c,before);
+  const backup=logicEngineBackup(c,role,'hello',start+180000);assert.match(backup,/Offline Mode/);assert.match(backup,/Hi!/);assert.doesNotMatch(backup,/Workflow:|DRAFT/);
+ }
+});
+test('a greeting followed by a real question still reaches Gemini with focused response instructions',async()=>{
+ let calls=0;
+ const handler=createCopilotHandler({env:demoEnv,clock:()=>start+180000,fetcher:async(_url,init)=>{calls++;const payload=JSON.parse(String(init?.body));assert.match(payload.systemInstruction.parts[0].text,/Only provide a draft when the user explicitly asks/);return output();}});
+ const req=request();(req.body as any).question='Hi, why is pickup not confirmed?';
+ const result=await invoke(handler,req);assert.equal(result.body.provider,'Gemini');assert.equal(calls,1);
+});
+test('greetings still enforce stale-snapshot, demo opt-out, and connected authentication checks',async()=>{
+ const req=request();(req.body as any).question='hello';
+ const disabled=createCopilotHandler({env:()=>({DEMO_COPILOT_ENABLED:'false'}),clock:()=>start+180000});assert.equal((await invoke(disabled,req)).status,403);
+ const connected=createCopilotHandler({env:()=>({VITE_DATA_MODE:'supabase',SUPABASE_URL:'https://synthetic.invalid',SUPABASE_SERVICE_ROLE_KEY:'test-key'}),clock:()=>start+180000});assert.equal((await invoke(connected,req)).status,401);
+ (req.body as any).snapshotKey='old';assert.equal((await invoke(createCopilotHandler({env:()=>({}),clock:()=>start+180000}),req)).status,409);
 });
 test('all three Gemini calls include current attention and role instructions, with a server-only key',async()=>{
  for(const role of ['staff','clinician','pharmacy'] as Role[]){

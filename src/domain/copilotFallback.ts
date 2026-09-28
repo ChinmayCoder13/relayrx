@@ -1,12 +1,14 @@
 import { INPUTS, attention, gateOpen, nextAction, patientText, roleNames, signal, state, waitingExplanation } from './engine.js';
 import type { RefillCase, Role } from './engine.js';
-import { copilotNames } from './copilot.js';
+import { copilotNames, copilotGreeting } from './copilot.js';
 
-export type CopilotProvider='Gemini'|'Logic Engine';
-export type CopilotReply={text:string;snapshotKey:string;provider:CopilotProvider;model:string|null;role:Role;asOf:string;mode:'online'|'offline';notice?:string;code?:string;retryable?:boolean};
+export type CopilotProvider='Gemini'|'Logic Engine'|'RelayRx';
+export type CopilotReply={text:string;snapshotKey:string;provider:CopilotProvider;model:string|null;role:Role;asOf:string;mode:'online'|'offline'|'local';notice?:string;code?:string;retryable?:boolean};
 
 /** Deterministic case facts, not a substitute model or a clinical recommendation. */
 export function logicEngineBackup(c:RefillCase,role:Role,question:string,now=Date.now()){
+ const greeting=copilotGreeting(role,question);
+ if(greeting)return `[Offline Mode: Logic Engine Backup]\n\n${greeting}\n\nThis is a built-in welcome, not an AI-generated response. Case questions can use the verified logic-engine backup while Gemini is unavailable.`;
  const wait=attention(c,now),next=nextAction(c);
  const verified=INPUTS.filter(i=>c.inputs[i.key].verified).map(i=>i.name);
  const missing=INPUTS.filter(i=>!c.inputs[i.key].verified).map(i=>i.name);
