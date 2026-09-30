@@ -70,3 +70,5 @@
 .copilot-provider-notice{margin-top:10px;line-height:1.5;color:#916339!important}
 .copilot-retry{margin-top:12px;font-size:.7rem;min-height:30px}
 @media(max-width:650px){.timer-restart span{display:none}}
+
+.note-label-row{display:flex;align-items:center;justify-content:space-between;gap:10px}.note-label-row .text-button{font-size:.75rem;display:inline-flex;align-items:center;gap:4px}
