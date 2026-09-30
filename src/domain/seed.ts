@@ -23,3 +23,10 @@ export function seedCases(now=Date.now()):RefillCase[]{
   return c;
  });
 }
+
+export const SAMPLE_PATIENTS = ['Taylor Reed','Priya Nair','Lucas Ortiz','Hannah Kim','Marcus Bell','Elena Novak','Daniel Osei','Grace Holloway'] as const;
+export const SAMPLE_MEDICATIONS = ['Sertraline','Omeprazole','Simvastatin','Hydrochlorothiazide','Montelukast','Gabapentin','Escitalopram','Pantoprazole'] as const;
+/** Fictional patient/medication pair so intake needs no typing. Picks a different pair each call. */
+export function sampleIntake(seed=Math.floor(Math.random()*1e6)){
+ return {patient:SAMPLE_PATIENTS[seed%SAMPLE_PATIENTS.length],medication:SAMPLE_MEDICATIONS[(seed*3+1)%SAMPLE_MEDICATIONS.length]};
+}
